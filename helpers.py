@@ -50,7 +50,7 @@ def region_of_interest(img, vertices):
     return masked_image
 
 
-def draw_lines(img, lines, color=[255, 0, 0], thickness=2):
+def draw_lines(img, lines, color=[255, 0, 0], thickness=15):
     """
     NOTE: this is the function you might want to use as a starting point once you want to 
     average/extrapolate the line segments you detect to map out the full
@@ -67,9 +67,57 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=2):
     If you want to make the lines semi-transparent, think about combining
     this function with the weighted_img() function below
     """
+
+    img_copy = np.copy(img)
+
+    left_lanes_points = []
+    left_lane_length = []
+    left_lane_slopes = []
+    right_lanes_points = []
+    right_lane_length = []
+    right_lane_slopes = []
+
     for line in lines:
         for x1,y1,x2,y2 in line:
-            cv2.line(img, (x1, y1), (x2, y2), color, thickness)
+            slope = (y2-y1)/(x2-x1)
+            length = np.sqrt((y2-y1)**2+(x2-x1)**2) 
+            if -0.9 <= slope <= 0.9: 
+                if slope < 0:
+                    left_lanes_points.append(line)
+                    left_lane_length.append(length)
+                    left_lane_slopes.append(slope)
+                else:                    
+                    right_lanes_points.append(line)
+                    right_lane_length.append(length)
+                    right_lane_slopes.append(slope)
+    
+    # # X intercepts for left lane
+    index = left_lane_length.index(max(left_lane_length)) 
+    x1, y1, x2, y2 = left_lanes_points[index][0]
+    slope = left_lane_slopes[index]
+    x0 = int((img.shape[0] - y1 + slope*x1)/slope)
+    y0 = img.shape[0]
+    x3 = int((330 - y1 + slope*x1)/slope)
+    y3 = 330
+   
+    # # Draw line
+    cv2.line(img, (x0 + 5, y0), (x3, y3), color, thickness)    
+
+
+    # # X intercepts for right lane
+    index = right_lane_length.index(max(right_lane_length)) 
+    x1, y1, x2, y2 = right_lanes_points[index][0]
+    slope = right_lane_slopes[index]
+    x0 = int((img.shape[0] - y1 + slope*x1)/slope)
+    y0 = img.shape[0]
+    x3 = int((330 - y1 + slope*x1)/slope)
+    y3 = 330
+   
+    # # Draw line
+    cv2.line(img, (x0, y0), (x3, y3), color, thickness)
+
+    img = weighted_img(img, img_copy)
+
 
 def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
     """
